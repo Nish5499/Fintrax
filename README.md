@@ -24,12 +24,76 @@ A smart, gamified personal finance management web app built with React, TypeScri
 |---|---|
 | 📊 **Dashboard** | Get an at-a-glance overview of your financial health — income, expenses, and savings summary |
 | 💸 **Expense Tracking** | Log and categorize personal expenses with ease |
-| 📈 **Visual Analytics** | Beautiful charts exposing your spending patterns by category and time period |
+| 📈 **Visual Analytics** | Complete analytics dashboard with time filters, summary cards, category breakdown, spending trends, and monthly comparisons |
 | 🎮 **90-Day Savings Game** | Gamified savings board challenge to help you save ₹1,00,000 in 90 days |
 | 🏦 **Savings Dashboard** | Track your savings plans and milestones with progress indicators |
 | 🎯 **Financial Goals** | Set, track, and plan goals with AI-powered recommendations |
 | 🤝 **Splitwise** | Split expenses with friends and manage group shared costs |
 | 🔐 **Authentication** | Secure sign-up / login flow |
+
+---
+
+## 📈 Analytics Dashboard
+
+The Analytics page is a **fully redesigned financial insights dashboard** giving you a comprehensive view of your spending behaviour.
+
+### ⏱️ Time-Based Filters
+
+Filter all charts and stats by selecting a time window:
+
+| Filter | What it shows |
+|---|---|
+| **Today** | Spending aggregated for the current day |
+| **This Week** | Last 7 days, shown as a bar chart per day |
+| **This Month** | All days of the current month (area chart) |
+| **This Year** | All 12 months of the current year (bar chart) |
+
+All cards and charts update **dynamically** when you switch filters.
+
+### 🃏 Summary Cards
+
+Three key metrics adjust with the selected time filter:
+- **Total Spending** — Sum of all expenses in the selected period
+- **Current Balance** — Live wallet balance (money added minus all expenses)
+- **Daily Average** — Total spending ÷ number of days in the filter window
+
+### 🔥 Insight Cards
+
+Two insight cards highlight your biggest spending:
+- **Top Category** — The category with the highest total, with its icon, amount, and % of total
+- **Biggest Spend** — The single highest expense transaction, date, and category
+
+### 🍩 Category Breakdown (Donut Chart)
+
+- Percentage labels rendered **inside each slice**
+- Color-coded legend with **both amount and %** for every category
+- Fully dark-mode compatible
+- Hover tooltip shows exact value and percentage
+
+### 📉 Spending Trend Chart
+
+Dynamically changes type based on the selected filter:
+- **Area chart** — for Today and This Month (smooth curve showing accumulation)
+- **Bar chart** — for This Week and This Year (easier day/month comparisons)
+
+### 📊 Monthly Comparison
+
+Always-visible bar chart showing the **last 6 months** of total spending for historical reference, independent of the active filter.
+
+### 📭 Empty States
+
+When no expenses exist for a selected period, a clean illustrated empty state is shown instead of blank/broken charts.
+
+### ✨ Animations
+
+All charts use Recharts `isAnimationActive` with `ease-out` easing on entry, giving the dashboard a smooth, premium feel.
+
+### 🧩 Reusable Components
+
+| Component | Purpose |
+|---|---|
+| `ChartTooltip` | Dark-glass styled tooltip used across all charts |
+| `EmptyChart` | Centered empty state with icon and message |
 
 ---
 
