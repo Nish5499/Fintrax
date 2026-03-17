@@ -30,6 +30,8 @@ A smart, gamified personal finance management web app built with React, TypeScri
 | 🎯 **Financial Goals** | Set, track, and plan goals with AI-powered recommendations |
 | 🤝 **Splitwise** | Split expenses with friends and manage group shared costs |
 | 🔐 **Authentication** | Secure sign-up / login flow |
+| 📱 **Mobile Responsive** | Fully optimized for all Android and iOS devices with safe-area and touch support |
+| 🖼️ **Custom Favicon** | Branded FinTrax favicon — rupee symbol with upward trend arrow in indigo-purple |
 
 ---
 
@@ -193,6 +195,35 @@ Fintrax/
 | `/savings` | Savings Dashboard |
 | `/goals` | Financial Goals |
 | `/splitwise` | Group Expense Splitter |
+
+---
+
+## 📱 Mobile-First Responsive Design
+
+FinTrax is built **mobile-first** and fully optimized for both **Android and iOS** devices.
+
+### ✅ Mobile Fixes Applied
+
+| Area | Detail |
+|---|---|
+| **iOS Safari Scroll** | Fixed scroll-freeze bug caused by `overflow-x:hidden` on both `html` + `body` |
+| **iOS Safe Area** | Bottom Nav and page padding respect notch & home bar via `env(safe-area-inset-bottom)` |
+| **Tap Highlight** | Removed native blue flash on tap (`-webkit-tap-highlight-color: transparent`) |
+| **Momentum Scroll** | Smooth iOS momentum scrolling enabled (`-webkit-overflow-scrolling: touch`) |
+| **Font Zoom Fix** | Prevents font size change on orientation switch (`-webkit-text-size-adjust: 100%`) |
+| **Touch Targets** | All buttons/links have `touch-action: manipulation` for instant tap response |
+| **Bottom Nav** | Equal flex touch zones for all 5 tabs, labels truncate cleanly on small screens |
+| **Landing Page** | Hero text scales `4xl→7xl`, CTA buttons are full-width on mobile |
+| **Expenses Page** | Delete button always visible without hover (mobile-friendly) |
+
+---
+
+## 🖼️ Custom Favicon
+
+A branded **FinTrax favicon** is included — featuring a **₹ rupee symbol** with an **upward trend arrow** in an indigo-purple gradient on a dark background.
+
+- Located at: `public/favicon.png`
+- Linked in `index.html` as both `rel="icon"` and `rel="apple-touch-icon"` for full Android & iOS support
 
 ---
 
