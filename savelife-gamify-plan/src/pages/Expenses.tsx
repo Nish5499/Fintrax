@@ -14,7 +14,7 @@ export default function Expenses() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState<ExpenseCategory | 'all'>('all');
-  
+
   const [newExpense, setNewExpense] = useState({
     amount: '',
     category: 'food' as ExpenseCategory,
@@ -22,13 +22,13 @@ export default function Expenses() {
     date: new Date().toISOString().split('T')[0],
     notes: '',
   });
-  
+
   const handleAddExpense = () => {
     if (!newExpense.amount || !newExpense.description) {
       toast.error('Please fill in all required fields');
       return;
     }
-    
+
     addExpense({
       amount: parseFloat(newExpense.amount),
       category: newExpense.category,
@@ -36,7 +36,7 @@ export default function Expenses() {
       date: newExpense.date,
       notes: newExpense.notes,
     });
-    
+
     toast.success('Expense added successfully');
     setNewExpense({
       amount: '',
@@ -47,20 +47,20 @@ export default function Expenses() {
     });
     setIsDialogOpen(false);
   };
-  
+
   const handleDeleteExpense = (id: string) => {
     deleteExpense(id);
     toast.success('Expense deleted');
   };
-  
+
   const filteredExpenses = expenses.filter(expense => {
     const matchesSearch = expense.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = filterCategory === 'all' || expense.category === filterCategory;
     return matchesSearch && matchesCategory;
   }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  
+
   const totalFiltered = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
-  
+
   // Group expenses by date
   const groupedExpenses = filteredExpenses.reduce((groups, expense) => {
     const date = expense.date;
@@ -99,7 +99,7 @@ export default function Expenses() {
                     className="text-2xl font-bold h-16"
                   />
                 </div>
-                
+
                 <div>
                   <label className="text-sm text-muted-foreground mb-2 block">Category</label>
                   <Select
@@ -121,7 +121,7 @@ export default function Expenses() {
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div>
                   <label className="text-sm text-muted-foreground mb-2 block">Description</label>
                   <Input
@@ -130,7 +130,7 @@ export default function Expenses() {
                     onChange={(e) => setNewExpense({ ...newExpense, description: e.target.value })}
                   />
                 </div>
-                
+
                 <div>
                   <label className="text-sm text-muted-foreground mb-2 block">Date</label>
                   <Input
@@ -139,7 +139,7 @@ export default function Expenses() {
                     onChange={(e) => setNewExpense({ ...newExpense, date: e.target.value })}
                   />
                 </div>
-                
+
                 <div>
                   <label className="text-sm text-muted-foreground mb-2 block">Notes (Optional)</label>
                   <Input
@@ -148,7 +148,7 @@ export default function Expenses() {
                     onChange={(e) => setNewExpense({ ...newExpense, notes: e.target.value })}
                   />
                 </div>
-                
+
                 <Button variant="hero" className="w-full" onClick={handleAddExpense}>
                   Add Expense
                 </Button>
@@ -156,7 +156,7 @@ export default function Expenses() {
             </DialogContent>
           </Dialog>
         </div>
-        
+
         {/* Search and Filter */}
         <div className="flex gap-3">
           <div className="flex-1 relative">
@@ -185,8 +185,8 @@ export default function Expenses() {
           </Select>
         </div>
       </header>
-      
-      <main className="p-6 space-y-6">
+
+      <main className="p-4 sm:p-6 space-y-6">
         {/* Summary Card */}
         <Card className="gradient-primary border-0">
           <CardContent className="p-5">
@@ -199,16 +199,16 @@ export default function Expenses() {
             </p>
           </CardContent>
         </Card>
-        
+
         {/* Expenses List */}
         <div className="space-y-6">
           {Object.entries(groupedExpenses).map(([date, dayExpenses]) => (
             <div key={date}>
               <h3 className="text-sm font-medium text-muted-foreground mb-3">
-                {new Date(date).toLocaleDateString('en-US', { 
-                  weekday: 'long', 
-                  month: 'short', 
-                  day: 'numeric' 
+                {new Date(date).toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  month: 'short',
+                  day: 'numeric'
                 })}
               </h3>
               <div className="space-y-3">
@@ -216,7 +216,7 @@ export default function Expenses() {
                   <Card key={expense.id} className="hover:border-primary/30 transition-all group">
                     <CardContent className="p-4">
                       <div className="flex items-center gap-3">
-                        <div 
+                        <div
                           className="w-12 h-12 rounded-xl flex items-center justify-center text-xl"
                           style={{ backgroundColor: `${CATEGORY_COLORS[expense.category]}20` }}
                         >
@@ -229,15 +229,15 @@ export default function Expenses() {
                             <p className="text-xs text-muted-foreground/70 mt-1">{expense.notes}</p>
                           )}
                         </div>
-                        <div className="text-right">
+                        <div className="text-right flex-shrink-0">
                           <p className="font-semibold text-foreground">-₹{expense.amount.toLocaleString()}</p>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="h-8 w-8 mt-1 text-destructive/60 hover:text-destructive transition-colors"
                             onClick={() => handleDeleteExpense(expense.id)}
                           >
-                            <Trash2 className="w-4 h-4 text-destructive" />
+                            <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
                       </div>
@@ -247,7 +247,7 @@ export default function Expenses() {
               </div>
             </div>
           ))}
-          
+
           {filteredExpenses.length === 0 && (
             <div className="text-center py-16">
               <p className="text-muted-foreground">No expenses found</p>
