@@ -1,9 +1,11 @@
-import { Outlet, Navigate } from 'react-router-dom';
+import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import BottomNav from '@/components/BottomNav';
 import { useFinance } from '@/context/FinanceContext';
 
 export default function AppLayout() {
   const { isAuthenticated, isAuthLoading } = useFinance();
+
+  const location = useLocation();
 
   if (isAuthLoading) {
     return (
@@ -14,7 +16,7 @@ export default function AppLayout() {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/auth" replace />;
+    return <Navigate to={`/auth${location.search}${location.hash}`} replace />;
   }
 
   return (
