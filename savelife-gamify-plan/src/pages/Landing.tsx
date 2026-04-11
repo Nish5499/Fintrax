@@ -1,8 +1,20 @@
-import { Link } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { TrendingUp, Shield, Target, Gamepad2, ArrowRight, Sparkles } from 'lucide-react';
 
+import { useFinance } from '@/context/FinanceContext';
+
 export default function Landing() {
+  const { isAuthenticated, isAuthLoading } = useFinance();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isAuthenticated && !isAuthLoading) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, isAuthLoading, navigate]);
+
   return (
     <div className="min-h-screen bg-background overflow-hidden">
       {/* Hero Section */}
