@@ -131,6 +131,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   useEffect(() => { saveToStorage('fintrax-savings-game', savingsGame); }, [savingsGame]);
   useEffect(() => { saveToStorage('fintrax-goals', goals); }, [goals]);
 
+  useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         const newUser: User = {
