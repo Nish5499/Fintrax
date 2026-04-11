@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,8 +15,29 @@ export default function Auth() {
   const [name, setName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { login, signup, loginWithGoogle } = useFinance();
+  const { login, signup, loginWithGoogle, isAuthenticated, isAuthLoading } = useFinance();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isAuthenticated && !isAuthLoading) {
+      navigate('/dashboard');
+    }
+  }, [isAuthenticated, isAuthLoading, navigate]);
+
+  useEffect(() => {
+    // Check for errors in the URL from OAuth redirect (both query params and hash fragments)
+    const urlParams = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    
+    const error = urlParams.get('error') || hashParams.get('error');
+    const errorDescription = urlParams.get('error_description') || hashParams.get('error_description');
+    
+    if (error || errorDescription) {
+      toast.error(errorDescription || 'Authentication failed. Please try again.');
+      // Clear the url parameters to avoid showing the error again on refresh
+      navigate('/auth', { replace: true });
+    }
+  }, [searchParams, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

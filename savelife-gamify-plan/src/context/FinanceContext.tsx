@@ -149,17 +149,18 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       setIsAuthLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth event:', event);
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         const newUser: User = {
-          id: session.user.id,
-          email: session.user.email || '',
-          name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || '',
+          id: session?.user.id || '',
+          email: session?.user.email || '',
+          name: session?.user.user_metadata?.full_name || session?.user.email?.split('@')[0] || '',
           walletBalance: 0,
         };
         setUser(newUser);
         localStorage.setItem('fintrax-user', JSON.stringify(newUser));
-      } else {
+      } else if (event === 'SIGNED_OUT') {
         setUser(null);
         localStorage.removeItem('fintrax-user');
       }
