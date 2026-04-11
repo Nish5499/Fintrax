@@ -6,10 +6,11 @@ interface FinanceContextType {
   user: User | null;
   setUser: (user: User | null) => void;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
-  signup: (email: string, password: string, name: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<{success: boolean, error?: string}>;
+  signup: (email: string, password: string, name: string) => Promise<{success: boolean, needsVerification?: boolean, error?: string}>;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
+  isAuthLoading: boolean;
   
   // Wallet — balance = totalMoneyAdded - total expenses
   walletBalance: number;
@@ -91,6 +92,7 @@ function saveToStorage(key: string, value: unknown) {
 
 export function FinanceProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [totalMoneyAdded, setTotalMoneyAdded] = useState<number>(() =>
     loadFromStorage('fintrax-total-added', INITIAL_WALLET_AMOUNT)
   );
@@ -129,7 +131,6 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   useEffect(() => { saveToStorage('fintrax-savings-game', savingsGame); }, [savingsGame]);
   useEffect(() => { saveToStorage('fintrax-goals', goals); }, [goals]);
 
-  useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         const newUser: User = {
@@ -144,6 +145,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         const stored = localStorage.getItem('fintrax-user');
         if (stored) setUser(JSON.parse(stored));
       }
+      setIsAuthLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -160,32 +162,37 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         setUser(null);
         localStorage.removeItem('fintrax-user');
       }
+      setIsAuthLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
   // ── Auth ──
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       console.error(error);
-      return false;
+      return { success: false, error: error.message };
     }
-    return true;
+    return { success: true };
   };
 
-  const signup = async (email: string, password: string, name: string): Promise<boolean> => {
-    const { error } = await supabase.auth.signUp({
+  const signup = async (email: string, password: string, name: string) => {
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: name } }
+      options: { 
+        data: { full_name: name },
+        emailRedirectTo: window.location.origin + '/auth',
+      }
     });
     if (error) {
       console.error(error);
-      return false;
+      return { success: false, error: error.message };
     }
-    return true;
+    const needsVerification = data.user && data.session === null;
+    return { success: true, needsVerification: !!needsVerification };
   };
 
   const loginWithGoogle = async (): Promise<void> => {
@@ -262,6 +269,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     <FinanceContext.Provider value={{
       user, setUser,
       isAuthenticated: !!user,
+      isAuthLoading,
       login, signup, loginWithGoogle, logout,
       walletBalance, totalMoneyAdded,
       addToWallet, walletTransactions,

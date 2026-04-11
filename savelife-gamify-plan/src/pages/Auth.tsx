@@ -23,21 +23,32 @@ export default function Auth() {
     setIsLoading(true);
     
     try {
-      let success = false;
       if (isLogin) {
-        success = await login(email, password);
+        const { success, error } = await login(email, password);
+        if (success) {
+          toast.success('Welcome back!');
+          navigate('/dashboard');
+        } else {
+          toast.error(error || 'Invalid credentials');
+        }
       } else {
         if (!name.trim()) {
           toast.error('Please enter your name');
           setIsLoading(false);
           return;
         }
-        success = await signup(email, password, name);
-      }
-      
-      if (success) {
-        toast.success(isLogin ? 'Welcome back!' : 'Account created successfully!');
-        navigate('/dashboard');
+        const { success, needsVerification, error } = await signup(email, password, name);
+        if (success) {
+          if (needsVerification) {
+            toast.success('Verification email sent! Please check your inbox and click the link to verify your account.');
+            setIsLogin(true); // Switch to login view
+          } else {
+            toast.success('Account created successfully!');
+            navigate('/dashboard');
+          }
+        } else {
+          toast.error(error || 'Could not create account');
+        }
       }
     } catch (error) {
       toast.error('Something went wrong. Please try again.');
