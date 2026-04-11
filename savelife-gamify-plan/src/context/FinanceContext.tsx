@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, Expense, WalletTransaction, SavingsGameCell, FinancialGoal } from '@/types/finance';
+import { supabase } from '@/lib/supabase';
 
 interface FinanceContextType {
   user: User | null;
@@ -7,7 +8,8 @@ interface FinanceContextType {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   signup: (email: string, password: string, name: string) => Promise<boolean>;
-  logout: () => void;
+  loginWithGoogle: () => Promise<void>;
+  logout: () => Promise<void>;
   
   // Wallet — balance = totalMoneyAdded - total expenses
   walletBalance: number;
@@ -128,26 +130,78 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   useEffect(() => { saveToStorage('fintrax-goals', goals); }, [goals]);
 
   useEffect(() => {
-    const stored = localStorage.getItem('fintrax-user');
-    if (stored) setUser(JSON.parse(stored));
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        const newUser: User = {
+          id: session.user.id,
+          email: session.user.email || '',
+          name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || '',
+          walletBalance: 0,
+        };
+        setUser(newUser);
+        localStorage.setItem('fintrax-user', JSON.stringify(newUser));
+      } else {
+        const stored = localStorage.getItem('fintrax-user');
+        if (stored) setUser(JSON.parse(stored));
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        const newUser: User = {
+          id: session.user.id,
+          email: session.user.email || '',
+          name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || '',
+          walletBalance: 0,
+        };
+        setUser(newUser);
+        localStorage.setItem('fintrax-user', JSON.stringify(newUser));
+      } else {
+        setUser(null);
+        localStorage.removeItem('fintrax-user');
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   // ── Auth ──
   const login = async (email: string, password: string): Promise<boolean> => {
-    const newUser: User = { id: '1', email, name: email.split('@')[0], walletBalance: 0 };
-    setUser(newUser);
-    localStorage.setItem('fintrax-user', JSON.stringify(newUser));
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      console.error(error);
+      return false;
+    }
     return true;
   };
 
   const signup = async (email: string, password: string, name: string): Promise<boolean> => {
-    const newUser: User = { id: Date.now().toString(), email, name, walletBalance: 0 };
-    setUser(newUser);
-    localStorage.setItem('fintrax-user', JSON.stringify(newUser));
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: name } }
+    });
+    if (error) {
+      console.error(error);
+      return false;
+    }
     return true;
   };
 
-  const logout = () => {
+  const loginWithGoogle = async (): Promise<void> => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin + '/dashboard',
+      }
+    });
+    if (error) {
+      console.error(error);
+    }
+  };
+
+  const logout = async (): Promise<void> => {
+    await supabase.auth.signOut();
     setUser(null);
     localStorage.removeItem('fintrax-user');
   };
@@ -208,7 +262,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     <FinanceContext.Provider value={{
       user, setUser,
       isAuthenticated: !!user,
-      login, signup, logout,
+      login, signup, loginWithGoogle, logout,
       walletBalance, totalMoneyAdded,
       addToWallet, walletTransactions,
       expenses, addExpense, deleteExpense, updateExpense,
