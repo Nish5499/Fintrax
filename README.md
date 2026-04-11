@@ -12,105 +12,79 @@ A smart, gamified personal finance management web app built with React, TypeScri
 
 ## 📖 Overview
 
-**FinTrax** is a modern personal finance application that helps you take control of your money through smart expense tracking, visual analytics, gamified savings challenges, and AI-powered goal planning.
+**FinTrax** is a modern, comprehensive personal finance application that helps you take control of your money through smart expense tracking, visual analytics, gamified savings challenges, AI-driven goal planning, and group expense splitting mechanics.
 
 > **Track** your spending → **Save** more money → **Win** financial freedom.
 
 ---
 
-## ✨ Features
+## ✨ Comprehensive Feature Set
 
-| Feature | Description |
-|---|---|
-| 📊 **Dashboard** | Get an at-a-glance overview of your financial health — income, expenses, and savings summary |
-| 💸 **Expense Tracking** | Log and categorize personal expenses with ease |
-| 📈 **Visual Analytics** | Complete analytics dashboard with time filters, summary cards, category breakdown, spending trends, and monthly comparisons |
-| 🎮 **90-Day Savings Game** | Gamified savings board challenge to help you save ₹1,00,000 in 90 days |
-| 🏦 **Savings Dashboard** | Track your savings plans and milestones with progress indicators |
-| 🎯 **Financial Goals** | Set, track, and plan goals with AI-powered recommendations |
-| 🤝 **Splitwise** | Split expenses with friends and manage group shared costs |
-| 🔐 **Authentication** | Secure sign-up / login flow |
-| 📱 **Mobile Responsive** | Fully optimized for all Android and iOS devices with safe-area and touch support |
-| 🖼️ **Custom Favicon** | Branded FinTrax favicon — rupee symbol with upward trend arrow in indigo-purple |
+### 1. 🚀 Onboarding & Dashboard
+- **Marketing Landing Page:** Features striking hero sections with dynamic blurred gradients, user stats (Active Users, Money Tracked), and beautifully designed feature cards.
+- **Wallet Overview:** Real-time calculation of your Wallet Balance based on total money added minus lifetime expenses.
+- **Cross-Sectional Dashboard:** One central portal combining your wallet balance, monthly burn rate, quick actions, cross-group Splitwise summary, Gamified Savings progress, an interactive spending breakdown pie chart, and a mini-ledger of recent transactions.
+- **Quick Money Additions:** Smart modal with quick-select denomination chips (₹500, ₹1000, etc.) for instant wallet top-ups.
 
----
+### 2. 💸 Expense Management
+- **Full CRUD Support:** Add, edit, and delete daily expenses.
+- **Categorization:** Categorize expenses such as Food (🍔), Travel (✈️), Rent (🏠), Shopping (🛍️), Bills (📄), and Others (📦) to enable accurate tracking.
+- **Derived Logic:** Logging an expense automatically deducts from your main Wallet Balance natively inside the state context.
 
-## 📈 Analytics Dashboard
+### 3. 📉 Advanced Visual Analytics
+- **Dynamic Time Filters:** Check insights filtered by 'Today', 'This Week', 'This Month', or 'This Year'.
+- **Interactive Charts (Powered by Recharts):**
+  - **Area/Bar Trend Charts:** Smooth accumulated area curves for daily/monthly tracking, and segmented bar charts for weekly/yearly tracking.
+  - **Category Donut/Pie Chart:** Detailed inner labels highlighting category percentage vs total, hover tooltips, and interactive legends.
+  - **Historical Comparison:** Always-visible last 6 months bar chart for historical performance checking.
+- **Insight Cards:** Highlights top spent category and largest single transaction.
 
-The Analytics page is a **fully redesigned financial insights dashboard** giving you a comprehensive view of your spending behaviour.
+### 4. 🎯 AI-Powered Financial Goals
+- **Smart Goal Setter Wizard:** Advanced 3-step interactive wizard that takes your target amount, monthly salary, and fixed/variable expenses, combined with a target deadline.
+- **Dynamic Calculation engine:** Automatically computes a safe monthly and daily saving target required to meet the goal.
+- **Budget Alerts:** Proactively warns you if the required monthly savings exceed your available disposable income (salary - expenses), advising you to reduce variable costs or extend the deadline.
+- **Goal Tracking:** Track active vs completed goals. Add funds directly to goals in increments with animated progress bars adapting colors upon completion (`gradient-primary` to `success`).
 
-### ⏱️ Time-Based Filters
+### 5. 🎮 90-Day Savings Challenge
+- **Gamification Mechanics:** A 90x tile interactive board to save ₹1,00,000 in 90 days.
+- **Randomized Tiles:** Board is consistently populated with localized ₹100, ₹200, and ₹500 actionable cells.
+- **Complete Decoupling:** Game progress is isolated from your actual Wallet Balance to act purely as a psychological/motivational tracking mechanic.
+- **Celebration Animations:** Special end-game success screens when the goal is met.
 
-Filter all charts and stats by selecting a time window:
+### 6. 🏦 Savings Dashboard
+- **Holistic Savings View:** Cross-references Wallet balance vs your total game progress simultaneously.
+- **Monthly Savings History:** Displays the last 3 months of estimated savings mapped in bar charts.
 
-| Filter | What it shows |
-|---|---|
-| **Today** | Spending aggregated for the current day |
-| **This Week** | Last 7 days, shown as a bar chart per day |
-| **This Month** | All days of the current month (area chart) |
-| **This Year** | All 12 months of the current year (bar chart) |
+### 7. 🤝 Splitwise (Group Expenses)
+- **Shared Group Ledgers:** Create trip or flat groups and add members securely.
+- **Flexible Splitting:** Log an expense and split the debt between members seamlessly.
+- **Settlements:** Settle up specific debts between any two distinct members.
+- **Minimum Transaction Algorithm:** Incorporates an advanced debt-simplification engine that matches creditors to debtors, heavily reducing cyclic/complex group debts into clean direct payouts.
+- **Cross-Group Aggregation:** The global Split Summary calculates exactly who owes you and who you owe across *all* active or past groups entirely (Net-Balance resolution).
 
-All cards and charts update **dynamically** when you switch filters.
+### 8. 🔐 Local-First & Persisted
+- Extensive `localStorage` integration ensures your financial data globally persists across browser reloads ensuring zero latency data loading.
 
-### 🃏 Summary Cards
-
-Three key metrics adjust with the selected time filter:
-- **Total Spending** — Sum of all expenses in the selected period
-- **Current Balance** — Live wallet balance (money added minus all expenses)
-- **Daily Average** — Total spending ÷ number of days in the filter window
-
-### 🔥 Insight Cards
-
-Two insight cards highlight your biggest spending:
-- **Top Category** — The category with the highest total, with its icon, amount, and % of total
-- **Biggest Spend** — The single highest expense transaction, date, and category
-
-### 🍩 Category Breakdown (Donut Chart)
-
-- Percentage labels rendered **inside each slice**
-- Color-coded legend with **both amount and %** for every category
-- Fully dark-mode compatible
-- Hover tooltip shows exact value and percentage
-
-### 📉 Spending Trend Chart
-
-Dynamically changes type based on the selected filter:
-- **Area chart** — for Today and This Month (smooth curve showing accumulation)
-- **Bar chart** — for This Week and This Year (easier day/month comparisons)
-
-### 📊 Monthly Comparison
-
-Always-visible bar chart showing the **last 6 months** of total spending for historical reference, independent of the active filter.
-
-### 📭 Empty States
-
-When no expenses exist for a selected period, a clean illustrated empty state is shown instead of blank/broken charts.
-
-### ✨ Animations
-
-All charts use Recharts `isAnimationActive` with `ease-out` easing on entry, giving the dashboard a smooth, premium feel.
-
-### 🧩 Reusable Components
-
-| Component | Purpose |
-|---|---|
-| `ChartTooltip` | Dark-glass styled tooltip used across all charts |
-| `EmptyChart` | Centered empty state with icon and message |
+### 9. 📱 Progressive Mobile Optimizations
+- **iOS SafeArea Integration:** Natively implements `env(safe-area-inset-bottom)` and top notch adjustments (`.pt-safe`, `.pb-safe`) ensuring pixel-perfect layout on latest iPhones.
+- **Touch-Optimized Mechanics:** Uses `touch-action: manipulation` and strips native Webkit highlight interactions (`-webkit-tap-highlight-color: transparent`) to make web elements feel like native iOS components.
+- **No-Scroll Leaks:** `page-container` classes strictly control global overflow tracking, stopping Safari's notorious lateral scroll bounce.
+- **Ergonomic Bottom Nav:** A slick modular bottom-tab navigation system for small viewports.
+- **Aesthetics & Animations:** Heavy implementation of glassmorphism (`.glass`), sleek tailwind variables `--shadow-glow`, and fluid micro-animations (`animate-float`, `animate-slide-up`, `animate-scale-in`).
 
 ---
 
-## 🛠️ Tech Stack
+## 🛠️ Tech Stack & Architecture
 
-- **Framework**: [React 18](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/)
-- **Build Tool**: [Vite](https://vitejs.dev/)
-- **UI Components**: [shadcn/ui](https://ui.shadcn.com/) + [Radix UI](https://www.radix-ui.com/)
-- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
-- **Routing**: [React Router v6](https://reactrouter.com/)
-- **Charts**: [Recharts](https://recharts.org/)
-- **Forms**: [React Hook Form](https://react-hook-form.com/) + [Zod](https://zod.dev/)
-- **State Management**: React Context API
-- **Data Fetching**: [TanStack Query](https://tanstack.com/query)
-- **Icons**: [Lucide React](https://lucide.dev/)
+- **Core Framework**: [React 18](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/)
+- **Build Engine**: [Vite](https://vitejs.dev/) utilizing `@vitejs/plugin-react-swc`
+- **UI Architecture**: [shadcn/ui](https://ui.shadcn.com/) components built on top of [Radix UI](https://www.radix-ui.com/) accessible primitives.
+- **Routing**: [React Router v6](https://reactrouter.com/) handling extensive client-side pathing (`BrowserRouter`).
+- **Styling Pipeline**: [Tailwind CSS v3](https://tailwindcss.com/) heavily customized with robust CSS variables (`--primary`, `--card`, `--success`) and bespoke keyframes.
+- **Data Visualization**: [Recharts](https://recharts.org/) for highly responsive Pie, Area, and Bar charts.
+- **State Management**: Built-in Context APIs isolated by domain boundaries (`FinanceContext`, `SplitContext`).
+- **Icons**: [Lucide React](https://lucide.dev/) for crisp SVGs.
+- **Toasts & Feedback**: [Sonner](https://sonner.emilkowal.ski/) providing stacking notification feeds and contextual error checking.
 
 ---
 
@@ -119,7 +93,7 @@ All charts use Recharts `isAnimationActive` with `ease-out` easing on entry, giv
 ### Prerequisites
 
 - **Node.js** v18+ — [Install via nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-- **npm** v9+ (comes with Node.js)
+- **npm** v9+
 
 ### Installation
 
@@ -146,27 +120,28 @@ The app will be available at **http://localhost:5173**
 
 ```
 Fintrax/
-└── savelife-gamify-plan/       # Main application
-    ├── public/                 # Static assets
+└── savelife-gamify-plan/       # Main Vite Workspace
+    ├── public/                 # Static assets (Favicon, Web App Manifests)
     └── src/
-        ├── components/         # Reusable UI components
-        │   └── ui/             # shadcn/ui base components
+        ├── components/         # Reusable UI elements
+        │   ├── charts/         # Specialized Recharts sub-components
+        │   └── ui/             # Radix + shadcn/ui derived components (Dialog, Input, Button)
         ├── context/            # React Context providers
-        │   ├── FinanceContext  # Global finance state
-        │   └── SplitContext    # Splitwise group state
-        ├── hooks/              # Custom React hooks
-        ├── lib/                # Utility functions
-        ├── pages/              # Route-level page components
-        │   ├── Landing.tsx     # Marketing landing page
-        │   ├── Auth.tsx        # Login / Sign-up
-        │   ├── Dashboard.tsx   # Main financial overview
-        │   ├── Expenses.tsx    # Expense management
-        │   ├── Analytics.tsx   # Spending analytics & charts
-        │   ├── SavingsGame.tsx # 90-day gamified challenge
-        │   ├── SavingsDashboard.tsx  # Savings tracker
-        │   ├── Goals.tsx       # Financial goals planner
-        │   └── Splitwise.tsx   # Group expense splitting
-        └── types/              # TypeScript type definitions
+        │   ├── FinanceContext  # Global wallet, expenses, goals, savings game state
+        │   └── SplitContext    # Group logic, settlement engine, debt simplification
+        ├── hooks/              # Custom reactive hooks
+        ├── lib/                # Utility pure functions (clsx, tailwind-merge)
+        ├── pages/              # Core application route definitions
+        │   ├── Landing.tsx     # Hero page marketing & Features breakdown
+        │   ├── Auth.tsx        # Login / Signup flows
+        │   ├── Dashboard.tsx   # Aggregated quick-glance portal (Cross-system stats)
+        │   ├── Expenses.tsx    # Transaction ledger
+        │   ├── Analytics.tsx   # Temporal breakdown charts & category pies
+        │   ├── SavingsGame.tsx # Interactive 90 tile matrix
+        │   ├── SavingsDashboard.tsx  # Savings trajectory & history
+        │   ├── Goals.tsx       # AI powered financial goals management
+        │   └── Splitwise.tsx   # Interpersonal ledger & group logic interface
+        └── types/              # Cross-boundary TypeScript definitions (Interfaces)
 ```
 
 ---
@@ -175,73 +150,44 @@ Fintrax/
 
 | Command | Description |
 |---|---|
-| `npm run dev` | Start development server with hot-reload |
-| `npm run build` | Build for production |
-| `npm run preview` | Preview the production build locally |
-| `npm run lint` | Lint the codebase with ESLint |
+| `npm run dev` | Spins up the SWC-optimized development server |
+| `npm run build` | Builds the project for production deployment |
+| `npm run preview` | Runs a local server to test the production build |
+| `npm run lint` | Lints the entire TSX codebase via ESLint |
 
 ---
 
-## 🗺️ App Routes
+## 🗺️ Pathing Topology
 
-| Route | Page |
-|---|---|
-| `/` | Landing Page |
-| `/auth` | Login / Sign-up |
-| `/dashboard` | Main Dashboard |
-| `/expenses` | Expense Tracker |
-| `/analytics` | Visual Analytics |
-| `/savings-game` | 90-Day Savings Game |
-| `/savings` | Savings Dashboard |
-| `/goals` | Financial Goals |
-| `/splitwise` | Group Expense Splitter |
-
----
-
-## 📱 Mobile-First Responsive Design
-
-FinTrax is built **mobile-first** and fully optimized for both **Android and iOS** devices.
-
-### ✅ Mobile Fixes Applied
-
-| Area | Detail |
-|---|---|
-| **iOS Safari Scroll** | Fixed scroll-freeze bug caused by `overflow-x:hidden` on both `html` + `body` |
-| **iOS Safe Area** | Bottom Nav and page padding respect notch & home bar via `env(safe-area-inset-bottom)` |
-| **Tap Highlight** | Removed native blue flash on tap (`-webkit-tap-highlight-color: transparent`) |
-| **Momentum Scroll** | Smooth iOS momentum scrolling enabled (`-webkit-overflow-scrolling: touch`) |
-| **Font Zoom Fix** | Prevents font size change on orientation switch (`-webkit-text-size-adjust: 100%`) |
-| **Touch Targets** | All buttons/links have `touch-action: manipulation` for instant tap response |
-| **Bottom Nav** | Equal flex touch zones for all 5 tabs, labels truncate cleanly on small screens |
-| **Landing Page** | Hero text scales `4xl→7xl`, CTA buttons are full-width on mobile |
-| **Expenses Page** | Delete button always visible without hover (mobile-friendly) |
-
----
-
-## 🖼️ Custom Favicon
-
-A branded **FinTrax favicon** is included — featuring a **₹ rupee symbol** with an **upward trend arrow** in an indigo-purple gradient on a dark background.
-
-- Located at: `public/favicon.png`
-- Linked in `index.html` as both `rel="icon"` and `rel="apple-touch-icon"` for full Android & iOS support
+| Route | Page Component | Focus |
+|---|---|---|
+| `/` | Landing Page | Lead-gen, marketing stats, and product intro |
+| `/auth` | Login / Sign-up | Entrance barrier to secure local-storage context |
+| `/dashboard` | Main Dashboard | High-level wallet pulse-check & global snapshot |
+| `/expenses` | Expense Tracker | Direct CRUD operations for standard expenses |
+| `/analytics` | Visual Analytics | Deep dives into where exactly funds are draining |
+| `/savings-game` | 90-Day Challenge | A decoupled behavioral finance savings mechanic |
+| `/savings` | Savings Dashboard | Long-term trajectory insight |
+| `/goals` | Financial Goals | Dynamic smart planning based on active salary/expenses |
+| `/splitwise` | Group Splitter | Debts minification and shared flat/trip planning |
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Feel free to open an issue or submit a pull request.
+Contributions are highly encouraged to expand feature sets like multi-currency support, robust server-side synchronization (replacing localstorage), and OCR receipt scanning.
 
 1. Fork the repository
-2. Create a new branch: `git checkout -b feature/your-feature-name`
-3. Commit your changes: `git commit -m 'feat: add your feature'`
-4. Push to the branch: `git push origin feature/your-feature-name`
-5. Open a Pull Request
+2. Create your isolated feature branch: `git checkout -b feature/your-feature-name`
+3. Commit with semantic intent: `git commit -m 'feat: added receipt scanner'`
+4. Push to branch: `git push origin feature/your-feature-name`
+5. Open a well-documented Pull Request
 
 ---
 
 ## 📄 License
 
-This project is open-source and available under the [MIT License](LICENSE).
+This open-source suite is distributed under the [MIT License](LICENSE).
 
 ---
 
