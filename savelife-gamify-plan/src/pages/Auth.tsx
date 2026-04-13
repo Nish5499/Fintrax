@@ -1,4 +1,5 @@
 // Triggering Cloudflare redeploy for Supabase Auth redirect URLs
+// Second trigger to ensure Environment Variables are loaded
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
