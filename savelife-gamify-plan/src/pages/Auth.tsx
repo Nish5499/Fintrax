@@ -1,5 +1,5 @@
 // Triggering Cloudflare redeploy for Supabase Auth redirect URLs
-// Second trigger to ensure Environment Variables are loaded
+// Second trigger to ensure Environment Variables are loaded here in code
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -30,10 +30,10 @@ export default function Auth() {
     // Check for errors in the URL from OAuth redirect (both query params and hash fragments)
     const urlParams = new URLSearchParams(window.location.search);
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    
+
     const error = urlParams.get('error') || hashParams.get('error');
     const errorDescription = urlParams.get('error_description') || hashParams.get('error_description');
-    
+
     if (error || errorDescription) {
       toast.error(errorDescription || 'Authentication failed. Please try again.');
       // Clear the url parameters to avoid showing the error again on refresh
@@ -44,7 +44,7 @@ export default function Auth() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
+
     try {
       if (isLogin) {
         const { success, error } = await login(email, password);
@@ -85,7 +85,7 @@ export default function Auth() {
       {/* Background Effects */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-primary/20 rounded-full blur-[150px] pointer-events-none" />
       <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-info/10 rounded-full blur-[100px] pointer-events-none" />
-      
+
       <div className="w-full max-w-md relative z-10">
         {/* Logo */}
         <div className="flex items-center justify-center gap-2 mb-8">
@@ -94,19 +94,19 @@ export default function Auth() {
           </div>
           <span className="text-3xl font-bold text-foreground">FinTrax</span>
         </div>
-        
+
         <Card variant="glass" className="animate-scale-in">
           <CardHeader className="text-center pb-2">
             <CardTitle className="text-2xl">
               {isLogin ? 'Welcome Back' : 'Create Account'}
             </CardTitle>
             <CardDescription>
-              {isLogin 
-                ? 'Enter your credentials to access your account' 
+              {isLogin
+                ? 'Enter your credentials to access your account'
                 : 'Start your journey to financial freedom'}
             </CardDescription>
           </CardHeader>
-          
+
           <CardContent className="pt-6">
             <form onSubmit={handleSubmit} className="space-y-4">
               {!isLogin && (
@@ -122,7 +122,7 @@ export default function Auth() {
                   />
                 </div>
               )}
-              
+
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <Input
@@ -134,7 +134,7 @@ export default function Auth() {
                   required
                 />
               </div>
-              
+
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <Input
@@ -153,11 +153,11 @@ export default function Auth() {
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
-              
-              <Button 
-                type="submit" 
-                variant="hero" 
-                className="w-full gap-2" 
+
+              <Button
+                type="submit"
+                variant="hero"
+                className="w-full gap-2"
                 size="lg"
                 disabled={isLoading}
               >
@@ -171,7 +171,7 @@ export default function Auth() {
                 )}
               </Button>
             </form>
-            
+
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t border-border" />
@@ -198,7 +198,7 @@ export default function Auth() {
               </svg>
               Google
             </Button>
-            
+
             <div className="mt-6 text-center">
               <button
                 onClick={() => setIsLogin(!isLogin)}
@@ -213,7 +213,7 @@ export default function Auth() {
             </div>
           </CardContent>
         </Card>
-        
+
         <p className="text-center text-sm text-muted-foreground mt-6">
           By continuing, you agree to our Terms of Service
         </p>
