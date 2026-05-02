@@ -1,5 +1,5 @@
 # 💰 FinTrax — Track. Save. Win.
-
+########3
 A smart, gamified personal finance management web app built with React, TypeScript, and Vite.
 
 ![FinTrax Banner](https://img.shields.io/badge/FinTrax-Track.%20Save.%20Win.-6366f1?style=for-the-badge&logo=trending-up)
