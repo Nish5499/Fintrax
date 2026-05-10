@@ -1,6 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { User, Expense, WalletTransaction, SavingsGameCell, FinancialGoal } from '@/types/finance';
 import { supabase } from '@/lib/supabase';
+import { FinanceAPI } from '@/lib/services/api';
+import { MigrationService } from '@/lib/services/migration';
 
 interface FinanceContextType {
   user: User | null;
@@ -12,40 +14,40 @@ interface FinanceContextType {
   logout: () => Promise<void>;
   isAuthLoading: boolean;
   
-  // Wallet — balance = totalMoneyAdded - total expenses
+  // Wallet
   walletBalance: number;
   totalMoneyAdded: number;
-  addToWallet: (amount: number, description: string) => void;
+  addToWallet: (amount: number, description: string) => Promise<void>;
   walletTransactions: WalletTransaction[];
   
   // Expenses
   expenses: Expense[];
-  addExpense: (expense: Omit<Expense, 'id'>) => void;
-  deleteExpense: (id: string) => void;
-  updateExpense: (id: string, expense: Partial<Expense>) => void;
+  addExpense: (expense: Omit<Expense, 'id'>) => Promise<void>;
+  deleteExpense: (id: string) => Promise<void>;
+  updateExpense: (id: string, expense: Partial<Expense>) => Promise<void>;
   
   // Monthly stats
   monthlyExpensesTotal: number;
   monthlyExpenses: Expense[];
   
-  // Savings Game — completely isolated from wallet
+  // Savings Game
   savingsGame: SavingsGameCell[];
-  completeSavingsCell: (cellId: number) => void;
-  gameSavingsTotal: number;   // amount tracked in the game (NOT wallet)
+  completeSavingsCell: (cellId: number) => Promise<void>;
+  gameSavingsTotal: number;
   gameSavingsRemaining: number;
   savingsTarget: number;
   currentDay: number;
   
   // Goals
   goals: FinancialGoal[];
-  addGoal: (goal: Omit<FinancialGoal, 'id' | 'createdAt' | 'status' | 'currentAmount'>) => void;
-  updateGoal: (id: string, goal: Partial<FinancialGoal>) => void;
-  deleteGoal: (id: string) => void;
+  addGoal: (goal: Omit<FinancialGoal, 'id' | 'createdAt' | 'status' | 'currentAmount'>) => Promise<void>;
+  updateGoal: (id: string, goal: Partial<FinancialGoal>) => Promise<void>;
+  deleteGoal: (id: string) => Promise<void>;
 }
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 
-// Generate 90 random cells for savings game
+// Generate 90 random cells for savings game (fallback if empty)
 const generateSavingsGame = (): SavingsGameCell[] => {
   const values: (100 | 200 | 500)[] = [100, 200, 500];
   return Array.from({ length: 90 }, (_, i) => ({
@@ -55,84 +57,99 @@ const generateSavingsGame = (): SavingsGameCell[] => {
   }));
 };
 
-// Current month helper
 const isCurrentMonth = (dateStr: string): boolean => {
   const d = new Date(dateStr);
   const now = new Date();
   return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
 };
 
-// Default sample expenses — use current month dates so monthly stats show real data
-const now = new Date();
-const curMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-const sampleExpenses: Expense[] = [
-  { id: '1', amount: 450,   category: 'food',     description: 'Grocery shopping', date: `${curMonth}-15`, notes: 'Weekly groceries' },
-  { id: '2', amount: 2500,  category: 'travel',   description: 'Uber rides',        date: `${curMonth}-14` },
-  { id: '3', amount: 15000, category: 'rent',     description: 'Monthly rent',      date: `${curMonth}-01` },
-  { id: '4', amount: 3200,  category: 'shopping', description: 'Amazon order',      date: `${curMonth}-12` },
-  { id: '5', amount: 1800,  category: 'bills',    description: 'Electricity bill',  date: `${curMonth}-10` },
-  { id: '6', amount: 850,   category: 'food',     description: 'Restaurant dinner', date: `${curMonth}-13` },
-  { id: '7', amount: 500,   category: 'others',   description: 'Miscellaneous',     date: `${curMonth}-11` },
-];
-
-const INITIAL_WALLET_AMOUNT = 50000; // seeded starting deposit so balance shows positive
-
-// LocalStorage helpers
-function loadFromStorage<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-function saveToStorage(key: string, value: unknown) {
-  localStorage.setItem(key, JSON.stringify(value));
-}
-
 export function FinanceProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
-  const [totalMoneyAdded, setTotalMoneyAdded] = useState<number>(() =>
-    loadFromStorage('fintrax-total-added', INITIAL_WALLET_AMOUNT)
-  );
-  const [walletTransactions, setWalletTransactions] = useState<WalletTransaction[]>(() =>
-    loadFromStorage('fintrax-wallet-txns', [])
-  );
-  const [expenses, setExpenses] = useState<Expense[]>(() =>
-    loadFromStorage('fintrax-expenses', sampleExpenses)
-  );
-  const [savingsGame, setSavingsGame] = useState<SavingsGameCell[]>(() =>
-    loadFromStorage('fintrax-savings-game', generateSavingsGame())
-  );
-  const [goals, setGoals] = useState<FinancialGoal[]>(() =>
-    loadFromStorage('fintrax-goals', [])
-  );
+  
+  const [totalMoneyAdded, setTotalMoneyAdded] = useState<number>(0);
+  const [walletTransactions, setWalletTransactions] = useState<WalletTransaction[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [savingsGame, setSavingsGame] = useState<SavingsGameCell[]>([]);
+  const [goals, setGoals] = useState<FinancialGoal[]>([]);
 
   const savingsTarget = 100000;
 
-  // ── Derived: wallet balance = money added - all expenses ──
-  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
-  const walletBalance = totalMoneyAdded - totalExpenses;
+  const loadData = useCallback(async () => {
+    try {
+      const [profile, txns, game, dbGoals] = await Promise.all([
+        FinanceAPI.fetchProfile(),
+        FinanceAPI.fetchTransactions(),
+        FinanceAPI.fetchSavingsGame(),
+        FinanceAPI.fetchGoals()
+      ]);
 
-  // ── Derived: savings game (fully isolated from wallet) ──
-  const gameSavingsTotal = savingsGame.filter(c => c.completed).reduce((sum, c) => sum + c.value, 0);
-  const gameSavingsRemaining = savingsTarget - gameSavingsTotal;
-  const currentDay = savingsGame.filter(c => c.completed).length + 1;
+      if (profile) {
+        setTotalMoneyAdded(profile.total_money_added || 0);
+      }
 
-  // ── Derived: monthly stats ──
-  const monthlyExpenses = expenses.filter(e => isCurrentMonth(e.date));
-  const monthlyExpensesTotal = monthlyExpenses.reduce((sum, e) => sum + e.amount, 0);
+      if (txns) {
+        const adds = txns.filter(t => t.type === 'add').map(t => ({
+          id: t.id,
+          amount: t.amount,
+          type: 'add' as const,
+          description: t.description,
+          date: t.date
+        }));
+        setWalletTransactions(adds);
 
-  // ── Persistence side-effects ──
-  useEffect(() => { saveToStorage('fintrax-total-added', totalMoneyAdded); }, [totalMoneyAdded]);
-  useEffect(() => { saveToStorage('fintrax-wallet-txns', walletTransactions); }, [walletTransactions]);
-  useEffect(() => { saveToStorage('fintrax-expenses', expenses); }, [expenses]);
-  useEffect(() => { saveToStorage('fintrax-savings-game', savingsGame); }, [savingsGame]);
-  useEffect(() => { saveToStorage('fintrax-goals', goals); }, [goals]);
+        const exp = txns.filter(t => t.type === 'deduct').map(t => ({
+          id: t.id,
+          amount: t.amount,
+          category: t.category as any,
+          description: t.description,
+          date: t.date,
+          notes: t.notes
+        }));
+        setExpenses(exp);
+      }
+
+      if (game && game.length > 0) {
+        // Map from DB schema to frontend schema
+        const mappedGame = game.map(g => ({
+          id: g.cell_id,
+          value: g.value as any,
+          completed: g.completed,
+          completedDate: g.completed_date
+        }));
+        // Merge with full 90-cell board if missing cells
+        const fullBoard = generateSavingsGame().map(c => {
+          const found = mappedGame.find(mg => mg.id === c.id);
+          return found ? found : c;
+        });
+        setSavingsGame(fullBoard);
+      } else {
+        setSavingsGame(generateSavingsGame());
+      }
+
+      if (dbGoals) {
+        const mappedGoals = dbGoals.map(g => ({
+          id: g.id,
+          name: g.name,
+          targetAmount: g.target_amount,
+          currentAmount: g.current_amount,
+          deadline: g.deadline,
+          monthlySalary: g.monthly_salary,
+          fixedExpenses: g.fixed_expenses,
+          variableExpenses: g.variable_expenses,
+          status: g.status as any,
+          createdAt: g.created_at
+        }));
+        setGoals(mappedGoals);
+      }
+    } catch (error) {
+      console.error('Failed to load finance data:', error);
+    }
+  }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const initAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         const newUser: User = {
           id: session.user.id,
@@ -141,16 +158,15 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
           walletBalance: 0,
         };
         setUser(newUser);
-        localStorage.setItem('fintrax-user', JSON.stringify(newUser));
-      } else {
-        const stored = localStorage.getItem('fintrax-user');
-        if (stored) setUser(JSON.parse(stored));
+        await MigrationService.migrateLocalDataToSupabase();
+        await loadData();
       }
       setIsAuthLoading(false);
-    });
+    };
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('Auth event:', event);
+    initAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         const newUser: User = {
           id: session?.user.id || '',
@@ -159,24 +175,37 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
           walletBalance: 0,
         };
         setUser(newUser);
-        localStorage.setItem('fintrax-user', JSON.stringify(newUser));
+        await MigrationService.migrateLocalDataToSupabase();
+        await loadData();
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
-        localStorage.removeItem('fintrax-user');
+        setTotalMoneyAdded(0);
+        setWalletTransactions([]);
+        setExpenses([]);
+        setSavingsGame(generateSavingsGame());
+        setGoals([]);
       }
       setIsAuthLoading(false);
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [loadData]);
+
+  // ── Derived State ──
+  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+  const walletBalance = totalMoneyAdded - totalExpenses;
+
+  const gameSavingsTotal = savingsGame.filter(c => c.completed).reduce((sum, c) => sum + c.value, 0);
+  const gameSavingsRemaining = savingsTarget - gameSavingsTotal;
+  const currentDay = savingsGame.filter(c => c.completed).length + 1;
+
+  const monthlyExpenses = expenses.filter(e => isCurrentMonth(e.date));
+  const monthlyExpensesTotal = monthlyExpenses.reduce((sum, e) => sum + e.amount, 0);
 
   // ── Auth ──
   const login = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      console.error(error);
-      return { success: false, error: error.message };
-    }
+    if (error) return { success: false, error: error.message };
     return { success: true };
   };
 
@@ -189,82 +218,177 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         emailRedirectTo: window.location.origin + '/auth',
       }
     });
-    if (error) {
-      console.error(error);
-      return { success: false, error: error.message };
-    }
+    if (error) return { success: false, error: error.message };
     const needsVerification = data.user && data.session === null;
     return { success: true, needsVerification: !!needsVerification };
   };
 
   const loginWithGoogle = async (): Promise<void> => {
-    const { error } = await supabase.auth.signInWithOAuth({
+    await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: window.location.origin + '/dashboard',
-      }
+      options: { redirectTo: window.location.origin + '/dashboard' }
     });
-    if (error) {
-      console.error(error);
-    }
   };
 
   const logout = async (): Promise<void> => {
     await supabase.auth.signOut();
-    setUser(null);
-    localStorage.removeItem('fintrax-user');
   };
 
   // ── Wallet ──
-  const addToWallet = (amount: number, description: string) => {
-    setTotalMoneyAdded(prev => prev + amount);
-    setWalletTransactions(prev => [...prev, {
+  const addToWallet = async (amount: number, description: string) => {
+    const newTotal = totalMoneyAdded + amount;
+    
+    // Optimistic UI
+    setTotalMoneyAdded(newTotal);
+    const tempTxn = {
       id: Date.now().toString(),
       amount,
-      type: 'add',
+      type: 'add' as const,
       description,
-      date: new Date().toISOString(),
-    }]);
+      date: new Date().toISOString()
+    };
+    setWalletTransactions(prev => [tempTxn, ...prev]);
+
+    try {
+      await FinanceAPI.updateProfile({ total_money_added: newTotal });
+      const dbTxn = await FinanceAPI.addTransaction({
+        amount,
+        type: 'add',
+        description,
+        date: new Date().toISOString()
+      });
+      // Replace optimistic txn with real one
+      setWalletTransactions(prev => prev.map(t => t.id === tempTxn.id ? { ...tempTxn, id: dbTxn.id } : t));
+    } catch (err) {
+      console.error(err);
+      // Revert optimistic update
+      setTotalMoneyAdded(prev => prev - amount);
+      setWalletTransactions(prev => prev.filter(t => t.id !== tempTxn.id));
+    }
   };
 
-  // ── Expenses — adding an expense auto-reduces walletBalance via derived computation ──
-  const addExpense = (expense: Omit<Expense, 'id'>) => {
-    setExpenses(prev => [...prev, { ...expense, id: Date.now().toString() }]);
+  // ── Expenses ──
+  const addExpense = async (expense: Omit<Expense, 'id'>) => {
+    const tempId = Date.now().toString();
+    const tempExpense = { ...expense, id: tempId };
+    setExpenses(prev => [tempExpense, ...prev]);
+
+    try {
+      const dbTxn = await FinanceAPI.addTransaction({
+        amount: expense.amount,
+        type: 'deduct',
+        category: expense.category,
+        description: expense.description,
+        notes: expense.notes,
+        date: expense.date
+      });
+      setExpenses(prev => prev.map(e => e.id === tempId ? { ...e, id: dbTxn.id } : e));
+    } catch (err) {
+      console.error(err);
+      setExpenses(prev => prev.filter(e => e.id !== tempId));
+    }
   };
 
-  const deleteExpense = (id: string) => {
+  const deleteExpense = async (id: string) => {
+    const prevExpenses = [...expenses];
     setExpenses(prev => prev.filter(e => e.id !== id));
+
+    try {
+      await FinanceAPI.deleteTransaction(id);
+    } catch (err) {
+      console.error(err);
+      setExpenses(prevExpenses);
+    }
   };
 
-  const updateExpense = (id: string, expense: Partial<Expense>) => {
-    setExpenses(prev => prev.map(e => e.id === id ? { ...e, ...expense } : e));
+  const updateExpense = async (id: string, updates: Partial<Expense>) => {
+    const prevExpenses = [...expenses];
+    setExpenses(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+
+    try {
+      await FinanceAPI.updateTransaction(id, updates);
+    } catch (err) {
+      console.error(err);
+      setExpenses(prevExpenses);
+    }
   };
 
-  // ── Savings Game — DOES NOT touch wallet ──
-  const completeSavingsCell = (cellId: number) => {
+  // ── Savings Game ──
+  const completeSavingsCell = async (cellId: number) => {
     const cell = savingsGame.find(c => c.id === cellId);
-    if (cell && !cell.completed) {
-      setSavingsGame(prev => prev.map(c =>
-        c.id === cellId ? { ...c, completed: true, completedDate: new Date().toISOString() } : c
-      ));
-      // ✅ No wallet deduction — game is completely separate
+    if (!cell || cell.completed) return;
+
+    const prevGame = [...savingsGame];
+    setSavingsGame(prev => prev.map(c => 
+      c.id === cellId ? { ...c, completed: true, completedDate: new Date().toISOString() } : c
+    ));
+
+    try {
+      await FinanceAPI.updateSavingsGameCell(cellId, { 
+        value: cell.value,
+        completed: true, 
+        completed_date: new Date().toISOString() 
+      });
+    } catch (err) {
+      console.error(err);
+      setSavingsGame(prevGame);
     }
   };
 
   // ── Goals ──
-  const addGoal = (goal: Omit<FinancialGoal, 'id' | 'createdAt' | 'status' | 'currentAmount'>) => {
-    setGoals(prev => [...prev, {
-      ...goal, id: Date.now().toString(),
-      createdAt: new Date().toISOString(), status: 'active', currentAmount: 0,
-    }]);
+  const addGoal = async (goal: Omit<FinancialGoal, 'id' | 'createdAt' | 'status' | 'currentAmount'>) => {
+    const tempId = Date.now().toString();
+    const tempGoal: FinancialGoal = {
+      ...goal, id: tempId, createdAt: new Date().toISOString(), status: 'active', currentAmount: 0
+    };
+    setGoals(prev => [...prev, tempGoal]);
+
+    try {
+      const dbGoal = await FinanceAPI.addGoal({
+        name: goal.name,
+        target_amount: goal.targetAmount,
+        deadline: goal.deadline,
+        monthly_salary: goal.monthlySalary,
+        fixed_expenses: goal.fixedExpenses,
+        variable_expenses: goal.variableExpenses
+      });
+      setGoals(prev => prev.map(g => g.id === tempId ? { ...g, id: dbGoal.id } : g));
+    } catch (err) {
+      console.error(err);
+      setGoals(prev => prev.filter(g => g.id !== tempId));
+    }
   };
 
-  const updateGoal = (id: string, goal: Partial<FinancialGoal>) => {
-    setGoals(prev => prev.map(g => g.id === id ? { ...g, ...goal } : g));
+  const updateGoal = async (id: string, updates: Partial<FinancialGoal>) => {
+    const prevGoals = [...goals];
+    setGoals(prev => prev.map(g => g.id === id ? { ...g, ...updates } : g));
+
+    try {
+      // map camelCase to snake_case for Supabase
+      const dbUpdates: any = {};
+      if (updates.name) dbUpdates.name = updates.name;
+      if (updates.targetAmount !== undefined) dbUpdates.target_amount = updates.targetAmount;
+      if (updates.currentAmount !== undefined) dbUpdates.current_amount = updates.currentAmount;
+      if (updates.deadline) dbUpdates.deadline = updates.deadline;
+      if (updates.status) dbUpdates.status = updates.status;
+
+      await FinanceAPI.updateGoal(id, dbUpdates);
+    } catch (err) {
+      console.error(err);
+      setGoals(prevGoals);
+    }
   };
 
-  const deleteGoal = (id: string) => {
+  const deleteGoal = async (id: string) => {
+    const prevGoals = [...goals];
     setGoals(prev => prev.filter(g => g.id !== id));
+
+    try {
+      await FinanceAPI.deleteGoal(id);
+    } catch (err) {
+      console.error(err);
+      setGoals(prevGoals);
+    }
   };
 
   return (
