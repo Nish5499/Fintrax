@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import { User, Expense, WalletTransaction, SavingsGameCell, FinancialGoal } from '@/types/finance';
 import { supabase } from '@/lib/supabase';
 import { FinanceAPI } from '@/lib/services/api';
@@ -73,12 +73,15 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const [savingsGame, setSavingsGame] = useState<SavingsGameCell[]>([]);
   const [goals, setGoals] = useState<FinancialGoal[]>([]);
 
+  const migrationInProgressRef = useRef(false);
+  const hasMigratedRef = useRef(false);
+
   const savingsTarget = 100000;
 
   const loadData = useCallback(async () => {
     try {
       const [profile, txns, game, dbGoals] = await Promise.all([
-        FinanceAPI.fetchProfile(),
+        FinanceAPI.ensureProfile(),
         FinanceAPI.fetchTransactions(),
         FinanceAPI.fetchSavingsGame(),
         FinanceAPI.fetchGoals()
@@ -158,8 +161,16 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
           walletBalance: 0,
         };
         setUser(newUser);
-        await MigrationService.migrateLocalDataToSupabase();
-        await loadData();
+        if (!migrationInProgressRef.current && !hasMigratedRef.current) {
+          migrationInProgressRef.current = true;
+          try {
+            await MigrationService.migrateLocalDataToSupabase();
+            hasMigratedRef.current = true;
+          } finally {
+            migrationInProgressRef.current = false;
+          }
+          await loadData();
+        }
       }
       setIsAuthLoading(false);
     };
@@ -175,9 +186,20 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
           walletBalance: 0,
         };
         setUser(newUser);
-        await MigrationService.migrateLocalDataToSupabase();
-        await loadData();
+        if (!migrationInProgressRef.current && !hasMigratedRef.current) {
+          migrationInProgressRef.current = true;
+          try {
+            await MigrationService.migrateLocalDataToSupabase();
+            hasMigratedRef.current = true;
+          } finally {
+            migrationInProgressRef.current = false;
+          }
+          await loadData();
+        } else if (hasMigratedRef.current) {
+          await loadData();
+        }
       } else if (event === 'SIGNED_OUT') {
+        hasMigratedRef.current = false;
         setUser(null);
         setTotalMoneyAdded(0);
         setWalletTransactions([]);

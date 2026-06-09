@@ -1,5 +1,15 @@
 import { supabase } from '../supabase';
-import { FinanceAPI, SplitAPI } from './api';
+import { FinanceAPI } from './api';
+
+const safeDate = (dateStr: any): string => {
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return new Date().toISOString().split('T')[0];
+    return d.toISOString().split('T')[0];
+  } catch {
+    return new Date().toISOString().split('T')[0];
+  }
+};
 
 export const MigrationService = {
   async migrateLocalDataToSupabase() {
@@ -7,103 +17,152 @@ export const MigrationService = {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return false;
 
-      // 1. Check if user has already onboarded/migrated
-      const profile = await FinanceAPI.fetchProfile();
-      if (profile?.onboarding_completed) {
-        return true; // Already migrated
+      // 1. Ensure profile exists (critical — all other tables have FK to profiles)
+      const profile = await FinanceAPI.ensureProfile();
+      if (!profile) {
+        console.error('Migration aborted: could not ensure profile exists.');
+        return false;
+      }
+
+      // 2. Skip if already migrated
+      if (profile.onboarding_completed === true) {
+        return true;
       }
 
       console.log('Starting migration from localStorage to Supabase...');
 
-      // 2. Read local data
+      // 3. Read local data
       const localTotalAdded = localStorage.getItem('fintrax-total-added');
       const localTransactions = localStorage.getItem('fintrax-wallet-txns');
       const localExpenses = localStorage.getItem('fintrax-expenses');
       const localSavingsGame = localStorage.getItem('fintrax-savings-game');
       const localGoals = localStorage.getItem('fintrax-goals');
 
-      // 3. Migrate Profile
-      const totalAdded = localTotalAdded ? parseFloat(localTotalAdded) : 0;
-      await FinanceAPI.updateProfile({ 
-        total_money_added: totalAdded,
-        onboarding_completed: true 
-      });
+      // 4. Check if there's anything to migrate
+      const hasData = localTotalAdded || localTransactions || localExpenses || localSavingsGame || localGoals;
+      if (!hasData) {
+        // No local data — just mark as onboarded
+        await FinanceAPI.updateProfile({ onboarding_completed: true });
+        console.log('No local data to migrate. Marked as onboarded.');
+        return true;
+      }
 
-      // 4. Migrate Wallet Transactions
+      // 5. Migrate wallet transactions (batch upsert)
       if (localTransactions) {
-        const txns = JSON.parse(localTransactions);
-        for (const t of txns) {
-          // ensure valid date
-          const date = new Date(t.date).toISOString().split('T')[0];
-          await supabase.from('transactions').insert({
-            user_id: user.id,
-            amount: t.amount,
-            type: t.type,
-            description: t.description,
-            date: date
-          });
+        try {
+          const txns = JSON.parse(localTransactions);
+          if (Array.isArray(txns) && txns.length > 0) {
+            const rows = txns
+              .filter(t => t && t.amount != null)
+              .map(t => ({
+                user_id: user.id,
+                amount: t.amount,
+                type: t.type || 'add',
+                description: t.description || '',
+                date: safeDate(t.date)
+              }));
+            if (rows.length > 0) {
+              const { error } = await supabase.from('transactions').insert(rows);
+              if (error && error.code !== '23505') {
+                console.error('Error migrating wallet transactions:', error);
+              }
+            }
+          }
+        } catch (e) {
+          console.error('Error parsing wallet transactions:', e);
         }
       }
 
-      // 5. Migrate Expenses (also into transactions table)
+      // 6. Migrate expenses (batch insert)
       if (localExpenses) {
-        const exps = JSON.parse(localExpenses);
-        for (const e of exps) {
-          const date = new Date(e.date).toISOString().split('T')[0];
-          await supabase.from('transactions').insert({
-            user_id: user.id,
-            amount: e.amount,
-            type: 'deduct',
-            category: e.category,
-            description: e.description,
-            notes: e.notes,
-            date: date
-          });
+        try {
+          const exps = JSON.parse(localExpenses);
+          if (Array.isArray(exps) && exps.length > 0) {
+            const rows = exps
+              .filter(e => e && e.amount != null)
+              .map(e => ({
+                user_id: user.id,
+                amount: e.amount,
+                type: 'deduct',
+                category: e.category || null,
+                description: e.description || '',
+                notes: e.notes || null,
+                date: safeDate(e.date)
+              }));
+            if (rows.length > 0) {
+              const { error } = await supabase.from('transactions').insert(rows);
+              if (error && error.code !== '23505') {
+                console.error('Error migrating expenses:', error);
+              }
+            }
+          }
+        } catch (e) {
+          console.error('Error parsing expenses:', e);
         }
       }
 
-      // 6. Migrate Savings Game
+      // 7. Migrate savings game (upsert — already idempotent)
       if (localSavingsGame) {
-        const game = JSON.parse(localSavingsGame);
-        const cellsToInsert = game.map((g: any) => ({
-          user_id: user.id,
-          cell_id: g.id,
-          value: g.value,
-          completed: g.completed,
-          completed_date: g.completedDate ? new Date(g.completedDate).toISOString() : null
-        }));
-        
-        // chunk inserts if necessary, but 90 rows is small
-        if (cellsToInsert.length > 0) {
-          await supabase.from('savings_game').upsert(cellsToInsert, { onConflict: 'user_id, cell_id' });
+        try {
+          const game = JSON.parse(localSavingsGame);
+          if (Array.isArray(game) && game.length > 0) {
+            const cellsToInsert = game
+              .filter(g => g && g.id != null && g.value != null)
+              .map(g => ({
+                user_id: user.id,
+                cell_id: g.id,
+                value: g.value,
+                completed: g.completed || false,
+                completed_date: g.completedDate ? new Date(g.completedDate).toISOString() : null
+              }));
+            if (cellsToInsert.length > 0) {
+              const { error } = await supabase
+                .from('savings_game')
+                .upsert(cellsToInsert, { onConflict: 'user_id, cell_id' });
+              if (error) console.error('Error migrating savings game:', error);
+            }
+          }
+        } catch (e) {
+          console.error('Error parsing savings game:', e);
         }
       }
 
-      // 7. Migrate Goals
+      // 8. Migrate goals (batch insert)
       if (localGoals) {
-        const goals = JSON.parse(localGoals);
-        for (const g of goals) {
-          const deadline = g.deadline ? new Date(g.deadline).toISOString().split('T')[0] : null;
-          await supabase.from('goals').insert({
-            user_id: user.id,
-            name: g.name,
-            target_amount: g.targetAmount,
-            current_amount: g.currentAmount,
-            deadline: deadline,
-            monthly_salary: g.monthlySalary,
-            fixed_expenses: g.fixedExpenses,
-            variable_expenses: g.variableExpenses,
-            status: g.status
-          });
+        try {
+          const goals = JSON.parse(localGoals);
+          if (Array.isArray(goals) && goals.length > 0) {
+            const rows = goals
+              .filter(g => g && g.name)
+              .map(g => ({
+                user_id: user.id,
+                name: g.name,
+                target_amount: g.targetAmount || 0,
+                current_amount: g.currentAmount || 0,
+                deadline: g.deadline ? safeDate(g.deadline) : null,
+                monthly_salary: g.monthlySalary || null,
+                fixed_expenses: g.fixedExpenses || null,
+                variable_expenses: g.variableExpenses || null,
+                status: g.status || 'active'
+              }));
+            if (rows.length > 0) {
+              const { error } = await supabase.from('goals').insert(rows);
+              if (error && error.code !== '23505') {
+                console.error('Error migrating goals:', error);
+              }
+            }
+          }
+        } catch (e) {
+          console.error('Error parsing goals:', e);
         }
       }
 
-      // Optionally clear local storage or leave as backup
-      // localStorage.removeItem('fintrax-total-added');
-      // localStorage.removeItem('fintrax-wallet-txns');
-      // localStorage.removeItem('fintrax-expenses');
-      // localStorage.removeItem('fintrax-savings-game');
-      // localStorage.removeItem('fintrax-goals');
+      // 9. Update profile (total money + mark as onboarded) — LAST step
+      const totalAdded = localTotalAdded ? parseFloat(localTotalAdded) : 0;
+      await FinanceAPI.updateProfile({
+        total_money_added: totalAdded,
+        onboarding_completed: true
+      });
 
       console.log('Migration completed successfully.');
       return true;

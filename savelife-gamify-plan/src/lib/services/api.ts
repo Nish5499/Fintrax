@@ -8,9 +8,32 @@ export const FinanceAPI = {
   async fetchProfile() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
-    const { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+    const { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
     if (error) {
       console.error('Error fetching profile:', error);
+      return null;
+    }
+    return data;
+  },
+
+  async ensureProfile() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    // Try to fetch existing profile
+    let profile = await this.fetchProfile();
+    if (profile) return profile;
+
+    // Profile doesn't exist — create it (fallback for trigger race condition)
+    const { data, error } = await supabase.from('profiles').upsert({
+      id: user.id,
+      full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || '',
+      onboarding_completed: false,
+      total_money_added: 0
+    }, { onConflict: 'id' }).select().maybeSingle();
+
+    if (error) {
+      console.error('Error ensuring profile:', error);
       return null;
     }
     return data;
@@ -32,9 +55,15 @@ export const FinanceAPI = {
   async addTransaction(transaction: Omit<WalletTransaction | Expense, 'id'>) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
+    // Only send columns that exist in the DB schema
     const { data, error } = await supabase.from('transactions').insert([{
       user_id: user.id,
-      ...transaction
+      amount: transaction.amount,
+      type: (transaction as any).type || 'deduct',
+      category: (transaction as any).category || null,
+      description: transaction.description || '',
+      notes: (transaction as any).notes || null,
+      date: transaction.date,
     }]).select().single();
     if (error) throw error;
     return data;
